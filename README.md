@@ -4,6 +4,41 @@ caver-js
 caver-js is a JavaScript API library that allows developers to interact with a
 Klaytn node using a HTTP or Websocket connection. 
 
+Usage
+=================
+**You can use the command-line demo** to test the functionality of two-party signing scheme.<br>
+Server:
+```sh
+$ demo/server
+🔧 Configured for development.
+    => address: localhost
+    => port: 8000
+    => log: critical
+    => workers: 24
+    => secret key: private-cookies disabled
+    => limits: forms = 32KiB
+    => keep-alive: 5s
+    => tls: disabled
+🚀 Rocket has launched from http://localhost:8000
+```
+Client:
+```sh
+$ demo/client --help
+Usage: client [options] [command]
+
+Options:
+  -h, --help                                                    output usage information
+
+Commands:
+  address
+  balance <address>
+  token_balance <address> <token_contract_address>
+  token_listen <to> <token_contract_address>
+  token_transfer <from> <to> <amount> <token_contract_address>
+  transfer <from> <to> <klay_amount>
+```
+
+
 Table of contents
 =================
    * [Requirements](#requirements)
