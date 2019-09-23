@@ -118,9 +118,7 @@ Accounts.prototype.createFromTwoParty = async function createFromTwoParty() {
     const p2mk = await party2.generateMasterKey();
     const p2cs = party2.getChildShare(p2mk, 0, 0);
     let publicKey = p2cs.getPublicKey().encode('hex', false);
-    console.log('publicKey =', publicKey);
     publicKey = `0x${publicKey.slice(2)}`;
-    console.log('publicKey #2 =', publicKey);
     const publicHash = Hash.keccak256(publicKey);
     const address = Account.toChecksum("0x" + publicHash.slice(-40));
     const account = { address, share: p2cs };
@@ -263,7 +261,6 @@ Accounts.prototype.signTransactionWithShare = async function signTransactionWith
 
     callback = callback || function () {};
 
-    console.log('#1');
     if (!tx) {
         error = new Error('No transaction object given!');
 
@@ -271,9 +268,7 @@ Accounts.prototype.signTransactionWithShare = async function signTransactionWith
         return Promise.reject(error);
     }
 
-    console.log('#2');
     async function signed(tx) {
-        console.log('inside signed');
         if (!tx.senderRawTransaction) {
             error = helpers.validateFunction.validateParams(tx)
         }
@@ -290,19 +285,13 @@ Accounts.prototype.signTransactionWithShare = async function signTransactionWith
             const transaction = coverInitialTxValue(tx);
 
             const rlpEncoded = encodeRLPByTxType(transaction);
-            console.log('rlpEncoded =', rlpEncoded);
 
             const messageHash = Hash.keccak256(rlpEncoded);
-            console.log('messageHash =', messageHash);
-            console.log('messageHash.substring(2) =', messageHash.substring(2));
             const msgHashBuf = Buffer.from(messageHash.substring(2), 'hex');
 
             const signature = await party2.sign(msgHashBuf, share, 0, 0);
-            console.log('signature =', signature);
             const vTmp = (signature.recid + Nat.toNumber(transaction.chainId || "0x1") * 2 + 35).toString(16); // addToV
-            console.log('vTmp =', vTmp);
             const [v, r, s] = [vTmp, signature.r, signature.s].map(sig => utils.makeEven(utils.trimLeadingZero(`0x${sig}`)));
-            console.log('[v, r, s] =', [v, r, s]);
 
             const rawTransaction = makeRawTransaction(rlpEncoded, [v, r, s], transaction);
 
@@ -325,13 +314,11 @@ Accounts.prototype.signTransactionWithShare = async function signTransactionWith
         return result
     }
 
-    console.log('#3');
     if (tx.nonce !== undefined && tx.chainId !== undefined && tx.gasPrice !== undefined) {
         return signed(tx);
     }
 
     // When the feePayer signs a transaction, required information is only chainId.
-    console.log('#4');
     if (tx.senderRawTransaction !== undefined) {
         return Promise.all([
             isNot(tx.chainId) ? _this._klaytnCall.getChainId() : tx.chainId,
@@ -343,7 +330,6 @@ Accounts.prototype.signTransactionWithShare = async function signTransactionWith
         });
     }
 
-    console.log('#5');
     // Otherwise, get the missing info from the Klaytn Node
     return Promise.all([
         isNot(tx.chainId) ? _this._klaytnCall.getChainId() : tx.chainId,
@@ -413,7 +399,7 @@ Accounts.prototype.signTransactionWithSignature = function signTransactionWithSi
             txHash: Hash.keccak256(rawTransaction),
             senderTxHash: getSenderTxHash(rawTransaction),
         }
-        
+
       } catch(e) {
         callback(e)
         return Promise.reject(e)
@@ -455,7 +441,7 @@ Accounts.prototype.recoverTransaction = function recoverTransaction(rawTx) {
     // If the leading zero is trimmed, it will be filled with a valid length of '0'.
     const arr = values.slice(7,9).map((sig) => {
       sig = sig.replace('0x', '')
-      while (sig.length < 64) { sig = '0'+ sig } 
+      while (sig.length < 64) { sig = '0'+ sig }
       return '0x' + sig
     })
     arr.unshift(values[6])
@@ -532,7 +518,7 @@ Accounts.prototype.sign = function sign(data, privateKey) {
  */
 Accounts.prototype.recover = function recover(message, signature, preFixed) {
     var args = [].slice.apply(arguments);
-    
+
     if (_.isObject(message)) {
       return this.recover(
         message.messageHash,
@@ -540,7 +526,7 @@ Accounts.prototype.recover = function recover(message, signature, preFixed) {
         true,
       )
     }
-    
+
     if (!preFixed) {
       message = this.hashMessage(message)
     }
@@ -571,7 +557,7 @@ Accounts.prototype.decrypt = function (v3Keystore, password, nonStrict) {
     if(!_.isString(password)) {
         throw new Error('No password given.');
     }
-    
+
     var json = (_.isObject(v3Keystore)) ? v3Keystore : JSON.parse(nonStrict ? v3Keystore.toLowerCase() : v3Keystore);
 
     if (json.version !== 3) {
@@ -851,7 +837,7 @@ Wallet.prototype.add = function (account, targetAddressRaw) {
     var klaytnWalletKey
     /**
      * cav.klay.accounts.wallet.add('0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318');
-     * 
+     *
      * cav.klay.accounts.wallet.add({
      *   privateKey: '0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709',
      *   address: '0xb8CE9ab6943e0eCED004cDe8e3bBed6568B2Fa01'
@@ -1132,7 +1118,7 @@ Wallet.prototype.getKlaytnWalletKey = function (addressOrIndex) {
 function genKlaytnWalletKeyStringFromAccount(account) {
     var addressString = account.address
     var privateKey = account.privateKey
-    
+
     privateKey = privateKey.slice(0,2) === '0x'? privateKey: '0x'+privateKey
     addressString = addressString.slice(0,2) === '0x'? addressString: '0x'+addressString
 

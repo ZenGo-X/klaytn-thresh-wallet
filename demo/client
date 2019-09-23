@@ -98,21 +98,15 @@ program
             path.join(__dirname, 'erc20-interface.json'), 'utf8'));
         const tokenContract = new caver.klay.Contract(jsonInterface, token_contract_address);
         const decimals = await tokenContract.methods.decimals().call();
-        console.log('decimals =', decimals);
         const actualAmount = new Decimal(amount).mul(Math.pow(10, decimals)).toString();
-        console.log('actualAmount =', actualAmount);
         const data = tokenContract.methods.transfer(to, actualAmount).encodeABI();
-        console.log('data =', data);
         const nonce = await caver.klay.getTransactionCount(from);
-        console.log('nonce =', nonce);
         const gasPrice = await caver.klay.getGasPrice();
-        console.log('gasPrice =', gasPrice);
         const gasLimit = await caver.klay.estimateGas({
            from,
            to,
            data
         });
-        console.log('gasLimit =', gasLimit);
 
         const signedTx = await caver.klay.accounts.signTransactionWithShare({
             type: 'SMART_CONTRACT_EXECUTION',
@@ -124,14 +118,13 @@ program
             value: 0,
             data
         }, share);
-        console.log('signedTx =', signedTx);
 
-        const sendRes = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
-        console.log('sendRes =', sendRes);
+        const result = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+        console.log(result);
     });
 
 program
-    .command('transfer <from> <to> <xtz_amount>')
+    .command('transfer <from> <to> <klay_amount>')
     .action(async (from, to, klay_amount) => {
       const share = db.get('addresses').find({ address: from }).value().share;
       if (!share) {
@@ -144,8 +137,6 @@ program
           from
       );
 
-      console.log('account for given address =', caver.klay.accounts.wallet[from])
-
       const signedTx = await caver.klay.accounts.signTransactionWithShare({
         type: 'VALUE_TRANSFER',
         from,
@@ -153,10 +144,9 @@ program
         gas: '300000',
         value: caverUtils.toPeb(klay_amount)
       }, share);
-      console.log('signedTx =', signedTx);
 
-      const sendRes = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
-      console.log('sendRes =', sendRes);
+      const result = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+      console.log(result);
     });
 
 program.parse(process.argv);
