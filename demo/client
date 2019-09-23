@@ -40,6 +40,11 @@ program
       console.log(`${caverUtils.fromPeb(balance, 'KLAY')} KLAY`);
     });
 
+/**
+ * Example:
+ * address = 0xC82a4b8Ef781FF31E6348d5Abe0F770Da08CDa40
+ * token_address = 0xdc652a2b6d51db4fc60e8f62c3db8c3a913528d9
+ */
 program
     .command('token_balance <address> <token_contract_address>')
     .action(async (address, token_contract_address) => {
@@ -53,6 +58,58 @@ program
         const coefficient = base.pow(-decimals);
         const actualBalance = coefficient.mul(balance);
         console.log(`${actualBalance} ${symbol}`);
+    });
+
+program
+    .command('token_transfer <from> <to> <amount> <token_contract_address>')
+    .action(async (from, to, amount, token_contract_address) => {
+        from = caverUtils.toChecksumAddress(from);
+        to = caverUtils.toChecksumAddress(to);
+        const share = db.get('addresses').find({ address: from }).value().share;
+        if (!share) {
+            console.error('Didn\'t find secret share for the provided from address');
+            return;
+        }
+
+        caver.klay.accounts.wallet.addWithPrivateShare(
+            share,
+            from
+        );
+
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caver.klay.Contract(jsonInterface, token_contract_address);
+        const decimals = await tokenContract.methods.decimals().call();
+        console.log('decimals =', decimals);
+        const actualAmount = new Decimal(amount).mul(Math.pow(10, decimals)).toString();
+        console.log('actualAmount =', actualAmount);
+        const data = tokenContract.methods.transfer(to, actualAmount).encodeABI();
+        console.log('data =', data);
+        const nonce = await caver.klay.getTransactionCount(from);
+        console.log('nonce =', nonce);
+        const gasPrice = await caver.klay.getGasPrice();
+        console.log('gasPrice =', gasPrice);
+        const gasLimit = await caver.klay.estimateGas({
+           from,
+           to,
+           data
+        });
+        console.log('gasLimit =', gasLimit);
+
+        const signedTx = await caver.klay.accounts.signTransactionWithShare({
+            type: 'SMART_CONTRACT_EXECUTION',
+            nonce,
+            from,
+            to: token_contract_address,
+            gas: gasLimit * 2,
+            gasPrice,
+            value: 0,
+            data
+        }, share);
+        console.log('signedTx =', signedTx);
+
+        const sendRes = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+        console.log('sendRes =', sendRes);
     });
 
 program
