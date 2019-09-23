@@ -61,6 +61,24 @@ program
     });
 
 program
+    .command('token_listen <to> <token_contract_address>')
+    .action(async (to, token_contract_address) => {
+        to = caverUtils.toChecksumAddress(to);
+        const caverWs = new Caver('wss://api.baobab.klaytn.net:8652/');  // WebSockets provider
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caverWs.klay.Contract(jsonInterface, token_contract_address);
+        console.log('listening to incoming Transfer events...');
+        tokenContract.events.Transfer({
+            filter: { to }
+        }).on('data', event => {
+            console.log('on(data): event =', event);
+        }).on('error', error => {
+            console.log('on(error): error =', error);
+        })
+    });
+
+program
     .command('token_transfer <from> <to> <amount> <token_contract_address>')
     .action(async (from, to, amount, token_contract_address) => {
         from = caverUtils.toChecksumAddress(from);
@@ -101,7 +119,7 @@ program
             nonce,
             from,
             to: token_contract_address,
-            gas: gasLimit * 2,
+            gas: gasLimit * 10,
             gasPrice,
             value: 0,
             data
@@ -131,7 +149,7 @@ program
       const signedTx = await caver.klay.accounts.signTransactionWithShare({
         type: 'VALUE_TRANSFER',
         from,
-        to: caverUtils.toChecksumAddress(to),
+        to,
         gas: '300000',
         value: caverUtils.toPeb(klay_amount)
       }, share);
