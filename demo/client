@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+
+const program = require('commander');
+const fs = require('fs');
+const path = require('path');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const Caver = require('../index');
+const caver = new Caver('https://api.baobab.klaytn.net:8651/');
+const caverUtils = caver.utils;
+
+const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
+
+program
+    .command('address')
+    .action(async () => {
+      const account = await caver.klay.accounts.createFromTwoParty();
+      db.get('addresses').push(account).write();
+      console.log(account.address);
+    });
+
+program
+    .command('balance <address>')
+    .action(async (address) => {
+      const balance = await caver.klay.getBalance(address);
+      console.log(`${caverUtils.fromPeb(balance, 'KLAY')} KLAY`);
+    });
+
+program
+    .command('transfer <from> <to> <xtz_amount>')
+    .action(async (from, to, klay_amount) => {
+      const share = db.get('addresses').find({ address: from }).value().share;
+      if (!share) {
+        console.error('Didn\'t find secret share for the provided from address');
+        return;
+      }
+
+      caver.klay.accounts.wallet.addWithPrivateShare(
+          share,
+          from
+      );
+
+      console.log('account for given address =', caver.klay.accounts.wallet[from])
+
+      const signedTx = await caver.klay.accounts.signTransactionWithShare({
+        type: 'VALUE_TRANSFER',
+        from,
+        to: caverUtils.toChecksumAddress(to),
+        gas: '300000',
+        value: caverUtils.toPeb(klay_amount)
+      }, share);
+      console.log('signedTx =', signedTx);
+
+      const sendRes = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+      console.log('sendRes =', sendRes);
+    });
+
+program.parse(process.argv);
