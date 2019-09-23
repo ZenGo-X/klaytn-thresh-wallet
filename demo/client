@@ -8,6 +8,7 @@ const FileSync = require('lowdb/adapters/FileSync');
 const Caver = require('../index');
 const caver = new Caver('https://api.baobab.klaytn.net:8651/');
 const caverUtils = caver.utils;
+const Decimal = require('decimal.js');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
@@ -37,6 +38,21 @@ program
     .action(async (address) => {
       const balance = await caver.klay.getBalance(address);
       console.log(`${caverUtils.fromPeb(balance, 'KLAY')} KLAY`);
+    });
+
+program
+    .command('token_balance <address> <token_contract_address>')
+    .action(async (address, token_contract_address) => {
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caver.klay.Contract(jsonInterface, token_contract_address);
+        const balance = await tokenContract.methods.balanceOf(address).call();
+        const symbol = await tokenContract.methods.symbol().call();
+        const decimals = await tokenContract.methods.decimals().call();
+        const base = new Decimal(10);
+        const coefficient = base.pow(-decimals);
+        const actualBalance = coefficient.mul(balance);
+        console.log(`${actualBalance} ${symbol}`);
     });
 
 program
