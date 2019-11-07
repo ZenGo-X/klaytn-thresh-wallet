@@ -1,7 +1,5 @@
 # Klaytn Threshold Wallet
 
-![npm](https://badge.fury.io/js/%40kzen-networks%2Ftezos-thresh-wallet.svg)
-
 Klaytn wallet and JS SDK powered by two-party ECDSA.
 
 ## Installation
