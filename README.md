@@ -4,6 +4,47 @@ Klaytn wallet and JS SDK powered by two-party ECDSA.
 
 Usage
 =================
+Clone the repository
+```
+$ git clone https://github.com/KZen-networks/klaytn-thresh-wallet.git
+$ cd klaytn-thresh-wallet
+```
+Server (acts as the co-signer in the two-party signing protocol):
+```js
+const { Party1 } = require('../index');
+const p1 = new Party1();
+p1.launchServer();
+```
+Client:
+```js
+const Caver = require('../index');
+const caver = new Caver('https://api.baobab.klaytn.net:8651/');
+const caverUtils = caver.utils;
+
+(async function () {
+    const {share, address} = await caver.klay.accounts.createFromTwoParty();
+    console.log(address);
+    // 0x477d627398FE73f4610c6EdC24218b78671E7991
+
+    /* Now deposit some Klaytn to the address created above */
+
+    caver.klay.accounts.wallet.addWithPrivateShare(
+        share,
+        address
+    );
+    const signedTx = await caver.klay.accounts.signTransactionWithShare({
+        type: 'VALUE_TRANSFER',
+        from: address,
+        to: address,  // or whatever destination address
+        gas: '300000',
+        value: caverUtils.toPeb(klay_amount)
+    }, share);
+
+    const result = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+    console.log(result);
+})();
+```
+
 **You can use the command-line demo** to test the functionality of two-party signing scheme.<br>
 Server:
 ```sh
