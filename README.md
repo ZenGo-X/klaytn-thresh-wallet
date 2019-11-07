@@ -2,10 +2,9 @@
 
 Klaytn wallet and JS SDK powered by two-party ECDSA.
 
-Requirements
-=================
+## Requirements
 The following packages are required to use the library:
-- [Rust](https://rustup.rs/). Recommended version: 1.36.0-nightly (d35181ad8 2019-05-20).
+- [Rust](https://rustup.rs/). <br> Recommended version: 1.36.0-nightly (d35181ad8 2019-05-20).
 - [Node.js](https://nodejs.org/en/download/)
 - [npm](https://www.npmjs.com/get-npm)
 - [gcc-c++](https://gcc.gnu.org/)
@@ -19,8 +18,7 @@ Testing in klaytn-thresh-wallet is implemented using the mocha testing framework
 
 If you are already using a different version of the node(for example, node v12), use the Node Version Manager([NVM](https://github.com/nvm-sh/nvm)) to install and use the version supported by klaytn-thresh-wallet.
 
-Usage
-=================
+## Usage
 ```
 $ git clone https://github.com/KZen-networks/klaytn-thresh-wallet.git
 $ cd klaytn-thresh-wallet
