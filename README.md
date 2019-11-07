@@ -2,8 +2,7 @@
 
 Klaytn wallet and JS SDK powered by two-party ECDSA.
 
-Usage
-=================
+## Usage
 Clone the repository
 ```
 $ git clone https://github.com/KZen-networks/klaytn-thresh-wallet.git
@@ -45,7 +44,8 @@ const caverUtils = caver.utils;
 })();
 ```
 
-**You can use the command-line demo** to test the functionality of two-party signing scheme.<br>
+## Demo
+You can also use the **CLI demo** to test the functionality of two-party signing scheme.<br>
 Server:
 ```sh
 $ demo/server
