@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+
+const program = require('commander');
+const fs = require('fs');
+const path = require('path');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const Caver = require('../index');
+const caver = new Caver('https://api.baobab.klaytn.net:8651/');
+const caverUtils = caver.utils;
+const Decimal = require('decimal.js');
+
+const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
+
+program
+    .command('address')
+    .action(async () => {
+      const account = await caver.klay.accounts.createFromTwoParty();
+      db.get('addresses').push(account).write();
+      console.log(account.address);
+    });
+
+program
+    .command('balance <address>')
+    .action(async (address) => {
+      const balance = await caver.klay.getBalance(address);
+      console.log(`${caverUtils.fromPeb(balance, 'KLAY')} KLAY`);
+    });
+
+/**
+ * Example:
+ * address = 0xC82a4b8Ef781FF31E6348d5Abe0F770Da08CDa40
+ * token_address = 0xdc652a2b6d51db4fc60e8f62c3db8c3a913528d9
+ */
+program
+    .command('token_balance <address> <token_contract_address>')
+    .action(async (address, token_contract_address) => {
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caver.klay.Contract(jsonInterface, token_contract_address);
+        const balance = await tokenContract.methods.balanceOf(address).call();
+        const symbol = await tokenContract.methods.symbol().call();
+        const decimals = await tokenContract.methods.decimals().call();
+        const base = new Decimal(10);
+        const coefficient = base.pow(-decimals);
+        const actualBalance = coefficient.mul(balance);
+        console.log(`${actualBalance} ${symbol}`);
+    });
+
+program
+    .command('token_listen <to> <token_contract_address>')
+    .action(async (to, token_contract_address) => {
+        to = caverUtils.toChecksumAddress(to);
+        const caverWs = new Caver('wss://api.baobab.klaytn.net:8652/');  // WebSockets provider
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caverWs.klay.Contract(jsonInterface, token_contract_address);
+        console.log('listening to incoming Transfer events...');
+        tokenContract.events.Transfer({
+            filter: { to }
+        }).on('data', event => {
+            console.log('on(data): event =', event);
+        }).on('error', error => {
+            console.log('on(error): error =', error);
+        })
+    });
+
+program
+    .command('token_transfer <from> <to> <amount> <token_contract_address>')
+    .action(async (from, to, amount, token_contract_address) => {
+        from = caverUtils.toChecksumAddress(from);
+        to = caverUtils.toChecksumAddress(to);
+        const share = db.get('addresses').find({ address: from }).value().share;
+        if (!share) {
+            console.error('Didn\'t find secret share for the provided from address');
+            return;
+        }
+
+        caver.klay.accounts.wallet.addWithPrivateShare(
+            share,
+            from
+        );
+
+        const jsonInterface = JSON.parse(fs.readFileSync(
+            path.join(__dirname, 'erc20-interface.json'), 'utf8'));
+        const tokenContract = new caver.klay.Contract(jsonInterface, token_contract_address);
+        const decimals = await tokenContract.methods.decimals().call();
+        const actualAmount = new Decimal(amount).mul(Math.pow(10, decimals)).toString();
+        const data = tokenContract.methods.transfer(to, actualAmount).encodeABI();
+        const nonce = await caver.klay.getTransactionCount(from);
+        const gasPrice = await caver.klay.getGasPrice();
+        const gasLimit = await caver.klay.estimateGas({
+           from,
+           to,
+           data
+        });
+
+        const signedTx = await caver.klay.accounts.signTransactionWithShare({
+            type: 'SMART_CONTRACT_EXECUTION',
+            nonce,
+            from,
+            to: token_contract_address,
+            gas: gasLimit * 10,
+            gasPrice,
+            value: 0,
+            data
+        }, share);
+
+        const result = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+        console.log(result);
+    });
+
+program
+    .command('transfer <from> <to> <klay_amount>')
+    .action(async (from, to, klay_amount) => {
+      const share = db.get('addresses').find({ address: from }).value().share;
+      if (!share) {
+        console.error('Didn\'t find secret share for the provided from address');
+        return;
+      }
+
+      caver.klay.accounts.wallet.addWithPrivateShare(
+          share,
+          from
+      );
+
+      const signedTx = await caver.klay.accounts.signTransactionWithShare({
+        type: 'VALUE_TRANSFER',
+        from,
+        to,
+        gas: '300000',
+        value: caverUtils.toPeb(klay_amount)
+      }, share);
+
+      const result = await caver.klay.sendSignedTransaction(signedTx.rawTransaction);
+      console.log(result);
+    });
+
+program.parse(process.argv);
