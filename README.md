@@ -42,7 +42,7 @@ Commands:
 
 ```
 
-|![Transfer demo](https://raw.githubusercontent.com/KZen-networks/tezos-thresh-wallet/master/demo/tezos-tss-demo.gif "Tezos Threshold Wallet Demo")|
+|![Transfer demo](https://github.com/KZen-networks/klaytn-thresh-wallet/blob/feature/two-party-ecdsa/demo/Klaytn%20TSS-2.gif?raw=true "Klaytn Threshold Wallet Demo")|
 |:--:|
 
 ## Development
