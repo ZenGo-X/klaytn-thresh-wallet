@@ -25,7 +25,7 @@ const caverUtils = caver.utils;
     console.log(address);
     // 0x477d627398FE73f4610c6EdC24218b78671E7991
 
-    /* Now deposit some Klaytn to the address created above */
+    /* Now deposit some Klay to the address created above */
 
     caver.klay.accounts.wallet.addWithPrivateShare(
         share,
